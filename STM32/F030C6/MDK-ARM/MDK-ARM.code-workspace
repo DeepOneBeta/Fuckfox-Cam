@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": ".."
+		}
+	],
+    "settings": {
+        "files.associations": {
+            "*.m": "matlab",
+            "main.h": "c",
+            "gpio.h": "c",
+            "i2c.h": "c"
+        }
+    }
+}

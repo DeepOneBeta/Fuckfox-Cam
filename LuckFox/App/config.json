@@ -1,0 +1,29 @@
+{
+    "tasks": [
+      {
+        "enable": true,
+        "module": "tasks.oled_display",
+        "class": "OLEDDisplayTask",
+        "instance_name": "oled_main",
+        "init_args": {
+          "bus_num": 3,
+          "addr": 60,
+          "update_interval": 1.0,
+          "show_cpu": true,
+          "show_mem": true,
+          "show_temp": true,
+          "show_time": true
+        }
+      }
+    ],
+    "settings": {
+      "log_level": "INFO",
+      "error_codes": {
+        "0": "系统正常",
+        "1001": "OLED 初始化失败",
+        "1002": "OLED 显示过程出错",
+        "2001": "电机通信超时",
+        "3001": "摄像头未就绪"
+      }
+    }
+  }
