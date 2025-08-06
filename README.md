@@ -64,12 +64,12 @@ buildroot固件、机械外壳、pcb链接（百度网盘）：
 ---
 
 ##  项目结构
-luckfox/
-└── App/
-├── main.py               # 系统主程序入口
-├── config.json           # 任务配置文件（注册自定义模块）
-└── tasks/
-└── print_yes.py          # 示例任务模块（可扩展）
+luckfox/  
+└── App/  
+├── main.py               # 系统主程序入口  
+├── config.json           # 任务配置文件（注册自定义模块）  
+└── tasks/  
+└── print_yes.py          # 示例任务模块（可扩展）  
 
 ---
 
