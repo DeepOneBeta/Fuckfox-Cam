@@ -1,4 +1,6 @@
 # Fuckfox-Cam
+---
+
 基于Luckfox pico mini制作的图传摄像头  
 buildroot固件、机械外壳、pcb链接（百度网盘）：  
 
@@ -52,6 +54,7 @@ buildroot固件、机械外壳、pcb链接（百度网盘）：
 | ---- | ---- |
 | 硬件部分 | 待定 |
 | 软件部分 | 待定 |
+
 ---
 
 #  LuckFox 系统框架使用说明
@@ -76,7 +79,7 @@ luckfox/
 
 ### 1. 编写任务模块
 
-将你的功能封装为一个 Python 类，建议存放于 `App/tasks/` 目录下（路径可自定义）。
+将你的功能封装为一个 Python 类，建议存放于 `App/tasks/` 目录下（路径可自定义）。  
 
 示例：`App/tasks/print_yes.py`
 ```python
@@ -92,12 +95,12 @@ class PrintYesTask:
             await asyncio.sleep(self.interval)
 ```
 
-要求：
-类必须实现 async def run(self) 方法，作为协程运行入口。
-所有初始化参数通过 __init__ 接收，并在配置中传入。
+要求：  
+类必须实现 async def run(self) 方法，作为协程运行入口。  
+所有初始化参数通过 __init__ 接收，并在配置中传入。  
 
-2. 在 config.json 中注册模块
-编辑 App/config.json，在 "tasks" 数组中添加注册信息：
+2. 在 config.json 中注册模块  
+编辑 App/config.json，在 "tasks" 数组中添加注册信息：  
 
 ```json
 {
@@ -115,36 +118,35 @@ class PrintYesTask:
 }
 ```
 
-字段说明
-字段名	说明
-enable	是否启用该任务（true/false）
-module	Python 模块路径（如 tasks.oled.display）
-class	要实例化的类名
-instance_name	实例名称，用于日志标识和调试
-init_args	传递给类构造函数的参数（支持任意 JSON 类型）
+字段说明  
+| 字段名 | 说明 |
+| ---- | ---- |
+| enable | 是否启用该任务（true/false） |
+| module | Python 模块路径（如 tasks.oled.display） | 
+| class | 要实例化的类名 | 
+| instance_name | 实例名称，用于日志标识和调试 | 
+| init_args | 传递给类构造函数的参数（支持任意 JSON 类型） | 
 
-ps：模块路径需与文件实际位置匹配，例如 tasks/i2c/stm32_comm 对应 App/tasks/i2c/stm32_comm.py
+ps：模块路径需与文件实际位置匹配，例如 tasks/i2c/stm32_comm 对应 App/tasks/i2c/stm32_comm.py  
 
-3. 启动系统
-运行主程序，系统将自动加载并运行所有已启用的任务：
-python App/main.py
+3. 启动系统  
+运行主程序，系统将自动加载并运行所有已启用的任务：  
+python App/main.py  
 
 ⚠️ 注意事项
-所有任务必须提供 async def run(self) 方法。
-避免使用阻塞调用（如 time.sleep()），应使用 await asyncio.sleep()。
-若需调用阻塞函数（如 smbus、串口、文件读写等），请使用 loop.run_in_executor 包装，防止阻塞事件循环。
+所有任务必须提供 async def run(self) 方法。  
+避免使用阻塞调用（如 time.sleep()），应使用 await asyncio.sleep()。  
+若需调用阻塞函数（如 smbus、串口、文件读写等），请使用 loop.run_in_executor 包装，防止阻塞事件循环。  
 
 祝你开发顺利，好运常伴！🍀
 
-—— D.D.D
-
-深色版本
+—— D.D.D  
 
 ---
 
 ## 🤝 贡献
 
 欢迎提交 Issue 或 Pull Request！  
-本项目适合嵌入式、物联网、边缘计算方向的开发者参与。
+本项目适合嵌入式、物联网、边缘计算方向的开发者参与。  
 
 ---
