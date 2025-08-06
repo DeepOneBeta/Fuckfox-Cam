@@ -1,8 +1,8 @@
 {
     "tasks": [
       {
-        "enable": true,
-        "module": "tasks.oled_display",
+        "enable": false,
+        "module": "tasks.oled.oled_display",
         "class": "OLEDDisplayTask",
         "instance_name": "oled_main",
         "init_args": {
@@ -14,8 +14,31 @@
           "show_temp": true,
           "show_time": true
         }
+      },
+
+      {
+        "enable": false,
+        "module": "tasks.print_yes",
+        "class": "PrintYesTask",
+        "instance_name": "print_yes_instance",
+        "init_args": {
+          "interval": 1.0
+        }
+      },
+
+    {
+      "enable": true,
+      "module": "tasks.i2c.i2c_CoreControl",
+      "class": "I2cStm32CommdTask",
+      "instance_name": "stm32_sensor_comm",
+      "init_args": {
+        "bus_number": 3,
+        "poll_interval": 2.0,
+        "command": "GET_ALL"
       }
+    }
     ],
+
     "settings": {
       "log_level": "INFO",
       "error_codes": {

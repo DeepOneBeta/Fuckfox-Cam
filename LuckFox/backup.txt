@@ -1,0 +1,53 @@
+Driver Info:
+	Driver name      : rkisp_v7
+	Card type        : rkisp_bypasspath_4x4sampling
+	Bus info         : platform:rkisp-vir0
+	Driver version   : 2.5.0
+	Capabilities     : 0x84201000
+		Video Capture Multiplanar
+		Streaming
+		Extended Pix Format
+		Device Capabilities
+	Device Caps      : 0x04201000
+		Video Capture Multiplanar
+		Streaming
+		Extended Pix Format
+Media Driver Info:
+	Driver name      : rkisp-vir0
+	Model            : rkisp0
+	Serial           : 
+	Bus info         : 
+	Media version    : 5.10.160
+	Hardware revision: 0x00000000 (0)
+	Driver version   : 5.10.160
+Interface Info:
+	ID               : 0x0300001f
+	Type             : V4L Video
+Entity Info:
+	ID               : 0x0000001e (30)
+	Name             : rkisp_bypasspath_4x4sampling
+	Function         : V4L2 I/O
+	Pad 0x01000021   : 0: Sink
+	  Link 0x02000022: from remote pad 0x1000004 of entity 'rkisp-isp-subdev' (Unknown V4L2 Sub-Device): Data, Enabled
+Priority: 2
+Format Video Capture Multiplanar:
+	Width/Height      : 576/324
+	Pixel Format      : 'NV12' (Y/CbCr 4:2:0)
+	Field             : None
+	Number of planes  : 1
+	Flags             : 
+	Colorspace        : Default
+	Transfer Function : Default
+	YCbCr/HSV Encoding: Default
+	Quantization      : Full Range
+	Plane 0           :
+	   Bytes per Line : 576
+	   Size Image     : 279936
+Selection Video Capture: crop, Left 0, Top 0, Width 576, Height 324, Flags: 
+Selection Video Capture: crop_bounds, Left 0, Top 0, Width 2304, Height 1296, Flags: 
+Selection Video Output: crop, Left 0, Top 0, Width 576, Height 324, Flags: 
+Selection Video Output: crop_bounds, Left 0, Top 0, Width 2304, Height 1296, Flags: 
+
+Image Processing Controls
+
+                     pixel_rate 0x009f0902 (int64)  : min=0 max=1000000000 step=1 default=1000000000 value=102000000 flags=read-only, volatile

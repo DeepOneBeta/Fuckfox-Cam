@@ -1,0 +1,13 @@
+{
+    "commands": {
+      "GET_TEMP": 1,
+      "GET_HUMI": 2,
+      "GET_PRESS": 3,
+      "GET_ALL":  4,
+      "SET_LED":  16,
+      "RESET":    255
+    },
+    "slave_addr": 36,
+    "response_len": 10,
+    "description": "I2C 命令集：与 STM32 固件保持一致"
+  }
