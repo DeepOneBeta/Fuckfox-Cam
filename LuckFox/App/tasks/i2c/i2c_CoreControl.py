@@ -111,13 +111,16 @@ class I2cStm32CommdTask:
         """协程主循环"""
         logger.info("🚀 启动 I2C 与 STM32 通信任务...")
 
-        # 探测设备
-        if not self.probe_slave():
-            logger.critical("🛑 STM32 设备未响应，任务退出")
-            return
+        # 初始探测 & 等待设备上线
+        while True:
+            if self.probe_slave():
+                logger.info(f"✅ STM32 设备已就绪，开始轮询命令: {self.command}")
+                break
+            else:
+                logger.warning(f"🛑 STM32 设备未响应，将在 {self.poll_interval:.1f}s 后重试...")
+                await asyncio.sleep(self.poll_interval)  # 等待后重试
 
-        logger.info(f"🔁 开始轮询命令: {self.command}，间隔 {self.poll_interval}s")
-
+        # 主循环：持续轮询
         try:
             while True:
                 response = self.send_command_and_read()
@@ -128,8 +131,18 @@ class I2cStm32CommdTask:
                     else:
                         logger.warning("⚠️  响应解析为空或格式错误")
                 else:
-                    logger.error("⚠️  本次轮询失败，跳过")
+                    logger.error("⚠️  本次轮询失败，设备可能掉线")
 
+                    # 进入等待恢复模式
+                    logger.info("🔁 尝试重新连接设备...")
+                    while True:
+                        if self.probe_slave():
+                            logger.info("✅ 设备恢复在线，继续轮询")
+                            break
+                        logger.warning(f"🔧 设备仍不在线，{self.poll_interval:.1f}s 后重试...")
+                        await asyncio.sleep(self.poll_interval)
+
+                # 正常轮询间隔
                 await asyncio.sleep(self.poll_interval)
 
         except asyncio.CancelledError:

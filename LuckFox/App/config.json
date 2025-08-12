@@ -2,17 +2,13 @@
     "tasks": [
       {
         "enable": false,
-        "module": "tasks.oled.oled_display",
-        "class": "OLEDDisplayTask",
+        "module": "tasks.oled.oled_test",
+        "class": "OLEDTask",
         "instance_name": "oled_main",
         "init_args": {
           "bus_num": 3,
           "addr": 60,
-          "update_interval": 1.0,
-          "show_cpu": true,
-          "show_mem": true,
-          "show_temp": true,
-          "show_time": true
+          "interval": 1.0
         }
       },
 

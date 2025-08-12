@@ -1,17 +1,18 @@
 import smbus
 import time
-import json
-import os
 
-# I2C bus number and device address
-I2C_BUS = 3
-OLED_ADDR = 0x3C
+# ------------------ 配置参数 ------------------
+I2C_BUS = 3              # 根据您的系统调整
+OLED_ADDR = 0x3c         # 常见地址：0x3C 或 0x3D
+WIDTH = 128
+HEIGHT = 64
+PAGES = HEIGHT // 8
 
-# SSD1306 commands
+# SSD1306 命令集
 CMD_MODE = 0x00
 DATA_MODE = 0x40
 
-# Initialization sequence
+# 初始化命令序列
 INIT_SEQUENCE = [
     0xAE,        # 关闭显示
     0xD5, 0x80,  # 设置时钟分频因子
@@ -29,7 +30,7 @@ INIT_SEQUENCE = [
     0xA4,        # 启用全屏点亮（非全开模式）
     0xA6,        # 设置正常显示（非反色）
     0x21, 0x00, 0x7F,  # 设置列地址（0-127）
-    0x22, 0x00, 7,  # 设置页地址（0-7）
+    0x22, 0x00, PAGES-1,  # 设置页地址（0-7）
     0xAF,        # 开启显示
 ]
 
@@ -237,6 +238,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
