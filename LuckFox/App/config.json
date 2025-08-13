@@ -24,7 +24,7 @@
 
     {
       "enable": true,
-      "module": "tasks.i2c.i2c_stm32_commd",
+      "module": "tasks.i2c.stm32_commd",
       "class": "I2cStm32CommdTask",
       "instance_name": "stm32_sensor_commd",
       "init_args": {
