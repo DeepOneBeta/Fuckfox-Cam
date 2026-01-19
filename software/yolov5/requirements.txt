@@ -1,0 +1,34 @@
+# YOLOv5 requirements - FIXED for NumPy 1.x + PyTorch 2.0.0 (cu117)
+# Usage: pip install -r requirements.txt
+
+# Base ------------------------------------------------------------------------
+gitpython>=3.1.30
+matplotlib>=3.3,<3.9          # matplotlib 3.9+ 可能引入 NumPy 2 依赖
+numpy>=1.23.5,<2              # 🔒 强制使用 NumPy 1.x
+opencv-python>=4.1.1,<4.10.0  # OpenCV 4.9.0 是最后一个支持 NumPy 1.x 的稳定版
+pillow>=8.0.0,<=10.2.0        # 避免新版潜在问题
+psutil
+PyYAML>=5.3.1
+requests>=2.32.2
+scipy>=1.4.1,<1.12            # scipy 1.12+ 开始部分支持 NumPy 2
+thop>=0.1.1
+tqdm>=4.66.3
+ultralytics>=8.2.64
+
+# Plotting --------------------------------------------------------------------
+pandas>=1.1.4,<2.0.0          # pandas 2.0+ 要求 NumPy >= 2
+seaborn>=0.11.0,<0.13.0
+
+# Export ----------------------------------------------------------------------
+onnx>=1.10.0
+onnx-simplifier>=0.4.1
+
+# Deploy ----------------------------------------------------------------------
+packaging
+setuptools>=70.0.0
+
+# Extras ----------------------------------------------------------------------
+urllib3>=2.6.0 ; python_version > "3.8"
+
+# ⚠️ 注意：PyTorch 不在此文件中安装！需单独用以下命令安装：
+# pip install torch==2.0.0 torchvision==0.15.0 torchaudio==2.0.0 --extra-index-url https://download.pytorch.org/whl/cu117
