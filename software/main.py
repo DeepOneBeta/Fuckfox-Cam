@@ -7,6 +7,11 @@ import math
 from collections import deque
 import time
 
+# ===== 调试开关 =====
+DEBUG = True
+DEBUG_PRINT_INTERVAL_SEC = 1.0
+_last_debug_print_ts = 0.0
+
 # ===== 疲劳检测参数（优化版） =====
 EAR_THRESHOLD_BASE = 0.21          # 基础眼睛闭合阈值（将自适应调整）
 MOUTH_RATIO_THRESHOLD_BASE = 0.32  # 基础嘴巴开合阈值
@@ -208,6 +213,7 @@ while True:
     current_mouth_ratio = 0.0
     face_found = False
     head_pose_valid = True
+    head_pose_angle = 0.0
     current_time = time.time()
 
     if detection_result.face_landmarks:
@@ -218,12 +224,9 @@ while True:
                 y = int(lm.y * frame.shape[0])
                 landmarks.append((x, y))
 
-            # 检查头部姿态（过滤无效帧）
+            # 检查头部姿态（只影响疲劳判断，不影响特征点绘制）
             head_pose_angle = calculate_head_pose(landmarks)
             head_pose_valid = head_pose_angle < HEAD_POSE_THRESHOLD
-
-            if not head_pose_valid:
-                continue  # 头部姿态不佳，跳过此帧
 
             # 提取关键区域
             left_eye = [landmarks[i] for i in LEFT_EYE_IDXS]
@@ -269,6 +272,10 @@ while True:
             cv2.polylines(annotated_frame, [np.array(mouth_for_draw, np.int32)], True, (0, 0, 255), 2)
 
             face_found = True
+            # 只处理第一张脸（num_faces=1），避免重复覆盖指标/绘制
+            break
+    else:
+        face_found = False
 
     # ===== 优化后的疲劳检测逻辑 =====
     perclos_score = 0.0
@@ -318,6 +325,26 @@ while True:
     # ===== 显示信息（优化版） =====
     y_offset = 30
     line_height = 25
+
+    # 基础状态（总是显示，便于定位是否检测到脸）
+    cv2.putText(
+        annotated_frame,
+        f"Face: {'YES' if face_found else 'NO'}",
+        (10, y_offset + line_height * 9),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (0, 255, 0) if face_found else (0, 0, 255),
+        2,
+    )
+    cv2.putText(
+        annotated_frame,
+        f"PoseAngle: {head_pose_angle:.1f} deg",
+        (10, y_offset + line_height * 10),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (0, 255, 0) if head_pose_valid else (0, 0, 255),
+        2,
+    )
     
     # 基础指标
     cv2.putText(annotated_frame, f"EAR: {current_ear:.3f}", (10, y_offset),
@@ -367,6 +394,22 @@ while True:
     cv2.imshow('Fatigue Detection - RTSP (Robust)', annotated_frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
+
+    # ===== 终端调试输出（节流，避免刷屏） =====
+    if DEBUG:
+        global _last_debug_print_ts
+        if current_time - _last_debug_print_ts >= DEBUG_PRINT_INTERVAL_SEC:
+            _last_debug_print_ts = current_time
+            num_faces = len(detection_result.face_landmarks) if detection_result.face_landmarks else 0
+            adaptive_ear_threshold = ear_baseline * 0.7 if ear_baseline else EAR_THRESHOLD_BASE
+            adaptive_mouth_threshold = mouth_baseline * 1.5 if mouth_baseline else MOUTH_RATIO_THRESHOLD_BASE
+            print(
+                f"[debug] faces={num_faces} face_found={face_found} "
+                f"pose_angle={head_pose_angle:.1f} valid={head_pose_valid} "
+                f"EAR={current_ear:.3f} thr={adaptive_ear_threshold:.3f} "
+                f"Mouth={current_mouth_ratio:.3f} thr={adaptive_mouth_threshold:.3f} "
+                f"score={fatigue_score:.2f} alert={fatigue_alert}"
+            )
 
 # ===== 清理 =====
 landmarker.close()
