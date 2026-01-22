@@ -24,12 +24,15 @@ ADAPTIVE_THRESHOLD_ALPHA = 0.1     # 自适应阈值更新系数（0-1，越小�
 PERCLOS_WINDOW_SECONDS = 60        # PERCLOS时间窗口（秒）
 BLINK_DURATION_THRESHOLD = 0.2     # 眨眼持续时间阈值（秒）
 MIN_BLINK_INTERVAL = 0.5           # 最小眨眼间隔（秒，避免重复计数）
-HEAD_POSE_THRESHOLD = 30           # 头部姿态角度阈值（度，超过此值视为无效）
 
 # ===== 状态变量 =====
 eye_close_count = 0
 mouth_open_count = 0
 fatigue_alert = False
+eye_closed_active = False           # 当前是否处于闭眼事件
+mouth_open_active = False           # 当前是否处于张嘴事件
+eye_close_events = 0                # 累计闭眼事件次数
+mouth_open_events = 0               # 累计张嘴事件次数
 
 # ===== 优化数据结构 =====
 ear_history = deque(maxlen=SMOOTH_WINDOW_SIZE)      # EAR历史值（滑动窗口）
@@ -66,7 +69,7 @@ options = vision.FaceLandmarkerOptions(
 landmarker = vision.FaceLandmarker.create_from_options(options)
 
 # ===== 打开 RTSP 流 =====
-rtsp_url = "rtsp://172.32.0.93/live/0"
+rtsp_url = "rtsp://172.32.0.93/live/1"
 cap = cv2.VideoCapture(rtsp_url)
 cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # 减少延迟
 
@@ -212,8 +215,6 @@ while True:
     current_ear = 0.0
     current_mouth_ratio = 0.0
     face_found = False
-    head_pose_valid = True
-    head_pose_angle = 0.0
     current_time = time.time()
 
     if detection_result.face_landmarks:
@@ -223,10 +224,6 @@ while True:
                 x = int(lm.x * frame.shape[1])
                 y = int(lm.y * frame.shape[0])
                 landmarks.append((x, y))
-
-            # 检查头部姿态（只影响疲劳判断，不影响特征点绘制）
-            head_pose_angle = calculate_head_pose(landmarks)
-            head_pose_valid = head_pose_angle < HEAD_POSE_THRESHOLD
 
             # 提取关键区域
             left_eye = [landmarks[i] for i in LEFT_EYE_IDXS]
@@ -260,8 +257,9 @@ while True:
                     mouth_baseline = update_adaptive_threshold(current_mouth_ratio, mouth_baseline)
 
             # 使用自适应阈值
-            adaptive_ear_threshold = ear_baseline * 0.7 if ear_baseline else EAR_THRESHOLD_BASE
-            adaptive_mouth_threshold = mouth_baseline * 1.5 if mouth_baseline else MOUTH_RATIO_THRESHOLD_BASE
+            # 自适应阈值（提高嘴巴阈值，减少误判张嘴）
+            adaptive_ear_threshold = ear_baseline * 0.85 if ear_baseline else EAR_THRESHOLD_BASE
+            adaptive_mouth_threshold = mouth_baseline * 1.6 if mouth_baseline else MOUTH_RATIO_THRESHOLD_BASE
 
             # 检测眨眼
             detect_blink(current_ear, adaptive_ear_threshold, current_time)
@@ -281,23 +279,38 @@ while True:
     perclos_score = 0.0
     fatigue_score = 0.0
     
-    if face_found and head_pose_valid:
+    if face_found:
         # 计算PERCLOS
         perclos_score = calculate_perclos(blink_times, perclos_window_start)
         
         # 使用自适应阈值的闭眼检测
-        adaptive_ear_threshold = ear_baseline * 0.7 if ear_baseline else EAR_THRESHOLD_BASE
+        adaptive_ear_threshold = ear_baseline * 0.85 if ear_baseline else EAR_THRESHOLD_BASE
         if current_ear < adaptive_ear_threshold:
             eye_close_count += 1
         else:
             eye_close_count = max(0, eye_close_count - 2)
+            # 若耳朵重新张开，关闭事件状态
+            if eye_closed_active:
+                eye_closed_active = False
 
         # 使用自适应阈值的张嘴检测
-        adaptive_mouth_threshold = mouth_baseline * 1.5 if mouth_baseline else MOUTH_RATIO_THRESHOLD_BASE
+        adaptive_mouth_threshold = mouth_baseline * 1.6 if mouth_baseline else MOUTH_RATIO_THRESHOLD_BASE
         if current_mouth_ratio > adaptive_mouth_threshold:
             mouth_open_count += 1
         else:
             mouth_open_count = max(0, mouth_open_count - 3)
+            # 嘴巴闭合则关闭事件状态
+            if mouth_open_active:
+                mouth_open_active = False
+
+        # 事件计数：当持续帧达到阈值且之前未记录事件时，累加一次
+        if not eye_closed_active and eye_close_count >= CONSEC_FRAMES_EYE:
+            eye_closed_active = True
+            eye_close_events += 1
+
+        if not mouth_open_active and mouth_open_count >= CONSEC_FRAMES_MOUTH:
+            mouth_open_active = True
+            mouth_open_events += 1
 
         # 多指标融合评分
         eye_score = min(eye_close_count / CONSEC_FRAMES_EYE, 1.0)
@@ -321,6 +334,8 @@ while True:
         mouth_open_count = max(0, mouth_open_count - 1)
         if not face_found:
             fatigue_alert = False
+            eye_closed_active = False
+            mouth_open_active = False
 
     # ===== 显示信息（优化版） =====
     y_offset = 30
@@ -336,15 +351,6 @@ while True:
         (0, 255, 0) if face_found else (0, 0, 255),
         2,
     )
-    cv2.putText(
-        annotated_frame,
-        f"PoseAngle: {head_pose_angle:.1f} deg",
-        (10, y_offset + line_height * 10),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (0, 255, 0) if head_pose_valid else (0, 0, 255),
-        2,
-    )
     
     # 基础指标
     cv2.putText(annotated_frame, f"EAR: {current_ear:.3f}", (10, y_offset),
@@ -352,34 +358,35 @@ while True:
     
     # 自适应阈值显示
     if ear_baseline is not None:
-        adaptive_thresh = ear_baseline * 0.7
+        adaptive_thresh = ear_baseline * 0.85
         cv2.putText(annotated_frame, f"EAR Threshold: {adaptive_thresh:.3f} (Adaptive)", (10, y_offset + line_height),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+    if mouth_baseline is not None:
+        adaptive_mouth = mouth_baseline * 1.6
+        cv2.putText(annotated_frame, f"Mouth Thr: {adaptive_mouth:.3f} (Adaptive)", (10, y_offset + line_height * 2),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
     
-    cv2.putText(annotated_frame, f"Mouth Ratio: {current_mouth_ratio:.3f}", (10, y_offset + line_height * 2),
+    cv2.putText(annotated_frame, f"Mouth Ratio: {current_mouth_ratio:.3f}", (10, y_offset + line_height * 2 + 15),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
     
-    # 计数器
+    # 计数器 + 事件次数
     cv2.putText(annotated_frame, f"Eye Close: {eye_close_count}/{CONSEC_FRAMES_EYE}", (10, y_offset + line_height * 3),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
     cv2.putText(annotated_frame, f"Mouth Open: {mouth_open_count}/{CONSEC_FRAMES_MOUTH}", (10, y_offset + line_height * 4),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+    cv2.putText(annotated_frame, f"Eye Close Events: {eye_close_events}", (10, y_offset + line_height * 5),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 200), 2)
+    cv2.putText(annotated_frame, f"Mouth Open Events: {mouth_open_events}", (10, y_offset + line_height * 6),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 200), 2)
     
     # PERCLOS和综合评分
-    if face_found and head_pose_valid:
-        cv2.putText(annotated_frame, f"PERCLOS: {perclos_score:.2f}", (10, y_offset + line_height * 5),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 165, 0), 2)
-        cv2.putText(annotated_frame, f"Fatigue Score: {fatigue_score:.2f}", (10, y_offset + line_height * 6),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 165, 0), 2)
-        cv2.putText(annotated_frame, f"Blinks: {len(blink_times)}", (10, y_offset + line_height * 7),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
-    
-    # 头部姿态状态
     if face_found:
-        status_color = (0, 255, 0) if head_pose_valid else (0, 0, 255)
-        status_text = "Head Pose: OK" if head_pose_valid else "Head Pose: Invalid"
-        cv2.putText(annotated_frame, status_text, (10, y_offset + line_height * 8),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, status_color, 2)
+        cv2.putText(annotated_frame, f"PERCLOS: {perclos_score:.2f}", (10, y_offset + line_height * 7),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 165, 0), 2)
+        cv2.putText(annotated_frame, f"Fatigue Score: {fatigue_score:.2f}", (10, y_offset + line_height * 8),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 165, 0), 2)
+        cv2.putText(annotated_frame, f"Blinks: {len(blink_times)}", (10, y_offset + line_height * 9),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
 
     # 疲劳警告（更醒目的显示）
     if fatigue_alert:
@@ -397,17 +404,16 @@ while True:
 
     # ===== 终端调试输出（节流，避免刷屏） =====
     if DEBUG:
-        global _last_debug_print_ts
         if current_time - _last_debug_print_ts >= DEBUG_PRINT_INTERVAL_SEC:
             _last_debug_print_ts = current_time
             num_faces = len(detection_result.face_landmarks) if detection_result.face_landmarks else 0
-            adaptive_ear_threshold = ear_baseline * 0.7 if ear_baseline else EAR_THRESHOLD_BASE
-            adaptive_mouth_threshold = mouth_baseline * 1.5 if mouth_baseline else MOUTH_RATIO_THRESHOLD_BASE
+            adaptive_ear_threshold = ear_baseline * 0.85 if ear_baseline else EAR_THRESHOLD_BASE
+            adaptive_mouth_threshold = mouth_baseline * 1.6 if mouth_baseline else MOUTH_RATIO_THRESHOLD_BASE
             print(
                 f"[debug] faces={num_faces} face_found={face_found} "
-                f"pose_angle={head_pose_angle:.1f} valid={head_pose_valid} "
                 f"EAR={current_ear:.3f} thr={adaptive_ear_threshold:.3f} "
                 f"Mouth={current_mouth_ratio:.3f} thr={adaptive_mouth_threshold:.3f} "
+                f"eye_events={eye_close_events} mouth_events={mouth_open_events} "
                 f"score={fatigue_score:.2f} alert={fatigue_alert}"
             )
 
